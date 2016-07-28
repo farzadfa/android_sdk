@@ -25,6 +25,7 @@ public class AdjustConfig {
     OnSessionTrackingFailedListener onSessionTrackingFailedListener;
     OnDeeplinkResponseListener onDeeplinkResponseListener;
     boolean sendInBackground;
+    long delayStart;
 
     public static final String ENVIRONMENT_SANDBOX = "sandbox";
     public static final String ENVIRONMENT_PRODUCTION = "production";
@@ -100,6 +101,10 @@ public class AdjustConfig {
 
     public void setOnDeeplinkResponseListener(OnDeeplinkResponseListener onDeeplinkResponseListener) {
         this.onDeeplinkResponseListener = onDeeplinkResponseListener;
+    }
+
+    public void setDelayStart(long delayStart) {
+        this.delayStart = delayStart;
     }
 
     public boolean hasAttributionChangedListener() {
