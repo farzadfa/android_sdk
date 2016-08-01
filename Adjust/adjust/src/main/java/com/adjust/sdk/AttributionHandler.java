@@ -140,7 +140,27 @@ public class AttributionHandler implements IAttributionHandler {
     private void checkAttributionResponseInternal(AttributionResponseData attributionResponseData) {
         checkAttributionInternal(attributionResponseData);
 
+        checkDeeplink(attributionResponseData);
+
         activityHandler.launchAttributionResponseTasks(attributionResponseData);
+    }
+
+    private void checkDeeplink(AttributionResponseData attributionResponseData) {
+        if (attributionResponseData.jsonResponse == null) {
+            return;
+        }
+
+        JSONObject attributionJson = attributionResponseData.jsonResponse.optJSONObject("attribution");
+        if (attributionJson == null) {
+            return;
+        }
+
+        String deeplinkString = attributionJson.optString("deeplink", null);
+        if (deeplinkString == null) {
+            return;
+        }
+
+        attributionResponseData.deeplink = Uri.parse(deeplinkString);
     }
 
     private void getAttributionInternal() {
