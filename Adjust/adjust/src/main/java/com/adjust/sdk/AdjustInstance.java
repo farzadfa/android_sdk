@@ -213,7 +213,7 @@ public class AdjustInstance {
 
     public void resetSessionPartnerParameters() {
         if (activityHandler != null) {
-            activityHandler.resetSessionCallbackParameters();
+            activityHandler.resetSessionPartnerParameters();
             return;
         }
 
@@ -224,7 +224,7 @@ public class AdjustInstance {
         sessionParametersActionsArray.add(new IRunActivityHandler() {
             @Override
             public void run(ActivityHandler activityHandler) {
-                activityHandler.resetSessionCallbackParameters();
+                activityHandler.resetSessionPartnerParameters();
             }
         });
     }

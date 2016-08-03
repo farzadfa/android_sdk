@@ -138,7 +138,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                initInternal();
+                initI();
             }
         });
     }
@@ -189,15 +189,15 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                delayStart();
+                delayStartI();
 
-                stopBackgroundTimer();
+                stopBackgroundTimerI();
 
-                startForegroundTimer();
+                startForegroundTimerI();
 
                 logger.verbose("Subsession start");
 
-                startInternal();
+                startI();
             }
         });
     }
@@ -209,13 +209,13 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                stopForegroundTimer();
+                stopForegroundTimerI();
 
-                startBackgroundTimer();
+                startBackgroundTimerI();
 
                 logger.verbose("Subsession end");
 
-                endInternal();
+                endI();
             }
         });
     }
@@ -229,9 +229,9 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
                     logger.warn("Event triggered before first application launch.\n" +
                             "This will trigger the SDK start and an install without user interaction.\n" +
                             "Please check https://github.com/adjust/android_sdk#can-i-trigger-an-event-at-application-launch for more information.");
-                    startInternal();
+                    startI();
                 }
-                trackEventInternal(event);
+                trackEventI(event);
             }
         });
     }
@@ -245,13 +245,13 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         }
         // check if it's an event response
         if (responseData instanceof EventResponseData) {
-            launchEventResponseTasks((EventResponseData)responseData);
+            launchEventResponseTasksI((EventResponseData)responseData);
             return;
         }
     }
 
     @Override
-    public void setEnabled(boolean enabled) {
+    public void setEnabled(final boolean enabled) {
         // compare with the saved or internal state
         if (!hasChangedState(this.isEnabled(), enabled,
                 "Adjust already enabled", "Adjust already disabled")) {
@@ -270,8 +270,13 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         }
 
         // save new enabled state in activity state
-        activityState.enabled = enabled;
-        writeActivityState();
+        Runnable saveEnabled = new Runnable() {
+            @Override
+            public void run() {
+                activityState.enabled = enabled;
+            }
+        };
+        writeActivityStateS(saveEnabled);
 
         updateStatus(!enabled,
                 "Pausing handlers due to SDK being disabled",
@@ -287,9 +292,9 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
             logger.info(pausingMessage);
         }
         // check if it's remaining in a pause state
-        else if (paused(false)) {
+        else if (pausedI(false)) {                      // safe to use internal version of paused (read only), can suffer from phantom read but not an issue
             // including the sdk click handler
-            if (paused(true)) {
+            if (pausedI(true)) {
                 logger.info(remainsPausedMessage);
             } else {
                 logger.info(remainsPausedMessage + ", except the Sdk Click Handler");
@@ -357,13 +362,13 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                readOpenUrlInternal(url, clickTime);
+                readOpenUrlI(url, clickTime);
             }
         });
     }
 
     @Override
-    public boolean updateAttribution(AdjustAttribution attribution) {
+    public boolean updateAttributionI(AdjustAttribution attribution) {
         if (attribution == null) {
             return false;
         }
@@ -372,19 +377,21 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
             return false;
         }
 
-        saveAttribution(attribution);
+        this.attribution = attribution;
+        writeAttributionI();
         return true;
     }
 
-    private void saveAttribution(AdjustAttribution attribution) {
-        this.attribution = attribution;
-        writeAttribution();
-    }
-
     @Override
-    public void setAskingAttribution(boolean askingAttribution) {
-        activityState.askingAttribution = askingAttribution;
-        writeActivityState();
+    public void setAskingAttribution(final boolean askingAttribution) {
+        Runnable saveAskingAttribution = new Runnable() {
+            @Override
+            public void run() {
+                activityState.askingAttribution = askingAttribution;
+            }
+        };
+
+        writeActivityStateS(saveAskingAttribution);
     }
 
     @Override
@@ -392,7 +399,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                sendReferrerInternal(referrer, clickTime);
+                sendReferrerI(referrer, clickTime);
             }
         });
     }
@@ -402,7 +409,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                launchEventResponseTasksInternal(eventResponseData);
+                launchEventResponseTasksI(eventResponseData);
             }
         });
     }
@@ -412,7 +419,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                launchSessionResponseTasksInternal(sessionResponseData);
+                launchSessionResponseTasksI(sessionResponseData);
             }
         });
     }
@@ -422,7 +429,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                launchAttributionResponseTasksInternal(attributionResponseData);
+                launchAttributionResponseTasksI(attributionResponseData);
             }
         });
     }
@@ -432,7 +439,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                sendFirstPackagesInternal();
+                sendFirstPackagesI();
             }
         });
     }
@@ -442,7 +449,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                addExternalDeviceIdInternal(externalDeviceId);
+                addExternalDeviceIdI(externalDeviceId);
             }
         });
     }
@@ -452,7 +459,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                addSessionCallbackParameterInternal(key, value);
+                addSessionCallbackParameterI(key, value);
             }
         });
     }
@@ -462,7 +469,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                addSessionPartnerParameterInternal(key, value);
+                addSessionPartnerParameterI(key, value);
             }
         });
     }
@@ -472,7 +479,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                removeSessionCallbackParameterInternal(key);
+                removeSessionCallbackParameterI(key);
             }
         });
     }
@@ -482,7 +489,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                removeSessionPartnerParameterInternal(key);
+                removeSessionPartnerParameterI(key);
             }
         });
     }
@@ -492,7 +499,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                resetExternalDeviceIdInternal();
+                resetExternalDeviceIdI();
             }
         });
     }
@@ -502,7 +509,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                resetSessionCallbackParametersInternal();
+                resetSessionCallbackParametersI();
             }
         });
     }
@@ -512,12 +519,12 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                resetSessionPartnerParametersInternal();
+                resetSessionPartnerParametersI();
             }
         });
     }
 
-    public ActivityPackage getAttributionPackage() {
+    public ActivityPackage getAttributionPackageI() {
         long now = System.currentTimeMillis();
         PackageBuilder attributionBuilder = new PackageBuilder(adjustConfig,
                 deviceInfo,
@@ -534,7 +541,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                updateHandlersStatusAndSendInternal();
+                updateHandlersStatusAndSendI();
             }
         });
     }
@@ -543,7 +550,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                foregroundTimerFiredInternal();
+                foregroundTimerFiredI();
             }
         });
     }
@@ -552,12 +559,12 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         internalHandler.post(new Runnable() {
             @Override
             public void run() {
-                backgroundTimerFiredInternal();
+                backgroundTimerFiredI();
             }
         });
     }
 
-    private void initInternal() {
+    private void initI() {
         SESSION_INTERVAL = AdjustFactory.getSessionInterval();
         SUBSESSION_INTERVAL = AdjustFactory.getSubsessionInterval();
         // get timer values
@@ -566,15 +573,15 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         BACKGROUND_TIMER_INTERVAL = AdjustFactory.getTimerInterval();
 
         // has to be read in the background
-        readAttribution(adjustConfig.context);
-        readActivityState(adjustConfig.context);
+        readAttributionI(adjustConfig.context);
+        readActivityStateI(adjustConfig.context);
         // read first the Session parameter class
-        readSessionParameters(adjustConfig.context);
+        readSessionParametersI(adjustConfig.context);
         if (sessionParameters == null) {
             sessionParameters = new SessionParameters();
         }
-        readSessionCallbackParameters(adjustConfig.context);
-        readSessionPartnerParameters(adjustConfig.context);
+        readSessionCallbackParametersI(adjustConfig.context);
+        readSessionPartnerParametersI(adjustConfig.context);
 
         if (activityState != null) {
             internalState.enabled = activityState.enabled;
@@ -641,24 +648,24 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
             }, DELAY_TIMER_NAME);
         }
 
-        packageHandler = AdjustFactory.getPackageHandler(this, adjustConfig.context, toSend(false));
+        packageHandler = AdjustFactory.getPackageHandler(this, adjustConfig.context, toSendI(false));
 
-        if (this.isToUpdatePackages()) {
-            updatePackagesInternal();
+        if (isToUpdatePackagesI()) {
+            updatePackagesI();
         }
 
-        ActivityPackage attributionPackage = getAttributionPackage();
+        ActivityPackage attributionPackage = getAttributionPackageI();
         attributionHandler = AdjustFactory.getAttributionHandler(this,
                 attributionPackage,
-                toSend(false),
+                toSendI(false),
                 adjustConfig.hasAttributionChangedListener());
 
-        sdkClickHandler = AdjustFactory.getSdkClickHandler(toSend(true));
+        sdkClickHandler = AdjustFactory.getSdkClickHandler(toSendI(true));
 
-        sessionParametersActionsInternal(adjustConfig.sessionParametersActionsArray);
+        sessionParametersActionsI(adjustConfig.sessionParametersActionsArray);
     }
 
-    private void sessionParametersActionsInternal(List<IRunActivityHandler> sessionParametersActionsArray) {
+    private void sessionParametersActionsI(List<IRunActivityHandler> sessionParametersActionsArray) {
         if (sessionParametersActionsArray == null) {
             return;
         }
@@ -668,21 +675,21 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         }
     }
 
-    private void startInternal() {
+    private void startI() {
         // it shouldn't start if it was disabled after a first session
         if (activityState != null
                 && !activityState.enabled) {
             return;
         }
 
-        updateHandlersStatusAndSendInternal();
+        updateHandlersStatusAndSendI();
 
-        processSession();
+        processSessionI();
 
-        checkAttributionState();
+        checkAttributionStateI();
     }
 
-    private void processSession() {
+    private void processSessionI() {
         long now = System.currentTimeMillis();
 
         // very first session
@@ -690,11 +697,11 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
             activityState = new ActivityState();
             activityState.sessionCount = 1; // this is the first session
 
-            transferSessionPackage(now);
+            transferSessionPackageI(now);
             activityState.resetSessionAttributes(now);
             activityState.enabled = internalState.isEnabled();
             activityState.updatePackages = internalState.isToUpdatePackages();
-            writeActivityState();
+            writeActivityStateI();
             return;
         }
 
@@ -703,7 +710,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         if (lastInterval < 0) {
             logger.error(TIME_TRAVEL);
             activityState.lastActivity = now;
-            writeActivityState();
+            writeActivityStateI();
             return;
         }
 
@@ -712,9 +719,9 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
             activityState.sessionCount++;
             activityState.lastInterval = lastInterval;
 
-            transferSessionPackage(now);
+            transferSessionPackageI(now);
             activityState.resetSessionAttributes(now);
-            writeActivityState();
+            writeActivityStateI();
             return;
         }
 
@@ -726,15 +733,15 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
             logger.verbose("Started subsession %d of session %d",
                     activityState.subsessionCount,
                     activityState.sessionCount);
-            writeActivityState();
+            writeActivityStateI();
             return;
         }
 
         logger.verbose("Time span since last activity too short for a new subsession");
     }
 
-    private void checkAttributionState() {
-        if (!checkActivityState(activityState)) { return; }
+    private void checkAttributionStateI() {
+        if (!checkActivityStateI(activityState)) { return; }
 
         // if it's a new session
         if (activityState.subsessionCount <= 1) {
@@ -749,26 +756,26 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         attributionHandler.getAttribution();
     }
 
-    private void endInternal() {
+    private void endI() {
         // pause sending if it's not allowed to send
-        if (!toSend()) {
-            pauseSending();
+        if (!toSendI()) {
+            pauseSendingI();
         }
 
-        if (updateActivityState(System.currentTimeMillis())) {
-            writeActivityState();
+        if (updateActivityStateI(System.currentTimeMillis())) {
+            writeActivityStateI();
         }
     }
 
-    private void trackEventInternal(AdjustEvent event) {
-        if (!checkActivityState(activityState)) return;
+    private void trackEventI(AdjustEvent event) {
+        if (!checkActivityStateI(activityState)) return;
         if (!this.isEnabled()) return;
-        if (!checkEvent(event)) return;
+        if (!checkEventI(event)) return;
 
         long now = System.currentTimeMillis();
 
         activityState.eventCount++;
-        updateActivityState(now);
+        updateActivityStateI(now);
 
         PackageBuilder eventBuilder = new PackageBuilder(adjustConfig, deviceInfo, activityState, now);
         ActivityPackage eventPackage = eventBuilder.buildEventPackage(event, sessionParameters, internalState.isDelayStart());
@@ -782,13 +789,13 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
 
         // if it is in the background and it can send, start the background timer
         if (adjustConfig.sendInBackground && internalState.isBackground()) {
-            startBackgroundTimer();
+            startBackgroundTimerI();
         }
 
-        writeActivityState();
+        writeActivityStateI();
     }
 
-    private void launchEventResponseTasksInternal(final EventResponseData eventResponseData) {
+    private void launchEventResponseTasksI(final EventResponseData eventResponseData) {
         Handler handler = new Handler(adjustConfig.context.getMainLooper());
 
         // success callback
@@ -821,23 +828,23 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         }
     }
 
-    private void launchSessionResponseTasksInternal(SessionResponseData sessionResponseData) {
+    private void launchSessionResponseTasksI(SessionResponseData sessionResponseData) {
         // use the same handler to ensure that all tasks are executed sequentially
         Handler handler = new Handler(adjustConfig.context.getMainLooper());
 
         // try to update the attribution
-        boolean attributionUpdated = updateAttribution(sessionResponseData.attribution);
+        boolean attributionUpdated = updateAttributionI(sessionResponseData.attribution);
 
         // if attribution changed, launch attribution changed delegate
         if (attributionUpdated) {
-            launchAttributionListener(handler);
+            launchAttributionListenerI(handler);
         }
 
         // launch Session tracking listener if available
-        launchSessionResponseListener(sessionResponseData, handler);
+        launchSessionResponseListenerI(sessionResponseData, handler);
     }
 
-    private void launchSessionResponseListener(final SessionResponseData sessionResponseData, Handler handler) {
+    private void launchSessionResponseListenerI(final SessionResponseData sessionResponseData, Handler handler) {
         // success callback
         if (sessionResponseData.success && adjustConfig.onSessionTrackingSucceededListener != null) {
             logger.debug("Launching success session tracking listener");
@@ -868,22 +875,22 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         }
     }
 
-    private void launchAttributionResponseTasksInternal(AttributionResponseData attributionResponseData) {
+    private void launchAttributionResponseTasksI(AttributionResponseData attributionResponseData) {
         Handler handler = new Handler(adjustConfig.context.getMainLooper());
 
         // try to update the attribution
-        boolean attributionUpdated = updateAttribution(attributionResponseData.attribution);
+        boolean attributionUpdated = updateAttributionI(attributionResponseData.attribution);
 
         // if attribution changed, launch attribution changed delegate
         if (attributionUpdated) {
-            launchAttributionListener(handler);
+            launchAttributionListenerI(handler);
         }
 
         // if there is any, try to launch the deeplink
-        prepareDeeplink(attributionResponseData.deeplink, handler);
+        prepareDeeplinkI(attributionResponseData.deeplink, handler);
     }
 
-    private void launchAttributionListener(Handler handler) {
+    private void launchAttributionListenerI(Handler handler) {
         if (adjustConfig.onAttributionChangedListener == null) {
             return;
         }
@@ -897,14 +904,14 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         handler.post(runnable);
     }
 
-    private void prepareDeeplink(final Uri deeplink, final Handler handler) {
+    private void prepareDeeplinkI(final Uri deeplink, final Handler handler) {
         if (deeplink == null) {
             return;
         }
 
         logger.info("Deferred deeplink received (%s)", deeplink);
 
-        final Intent deeplinkIntent = createDeeplinkIntent(deeplink);
+        final Intent deeplinkIntent = createDeeplinkIntentI(deeplink);
 
         Runnable runnable = new Runnable() {
             @Override
@@ -921,7 +928,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         handler.post(runnable);
     }
 
-    private Intent createDeeplinkIntent(Uri deeplink) {
+    private Intent createDeeplinkIntentI(Uri deeplink) {
         Intent mapIntent;
         if (adjustConfig.deepLinkComponent == null) {
             mapIntent = new Intent(Intent.ACTION_VIEW, deeplink);
@@ -952,11 +959,11 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         adjustConfig.context.startActivity(deeplinkIntent);
     }
 
-    private void sendReferrerInternal(String referrer, long clickTime) {
+    private void sendReferrerI(String referrer, long clickTime) {
         if (referrer == null || referrer.length() == 0 ) {
             return;
         }
-        PackageBuilder clickPackageBuilder = queryStringClickPackageBuilder(referrer);
+        PackageBuilder clickPackageBuilder = queryStringClickPackageBuilderI(referrer);
 
         if (clickPackageBuilder == null) {
             return;
@@ -968,7 +975,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         sdkClickHandler.sendSdkClick(clickPackage);
     }
 
-    private void readOpenUrlInternal(Uri url, long clickTime) {
+    private void readOpenUrlI(Uri url, long clickTime) {
         if (url == null) {
             return;
         }
@@ -979,7 +986,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
             queryString = "";
         }
 
-        PackageBuilder clickPackageBuilder = queryStringClickPackageBuilder(queryString);
+        PackageBuilder clickPackageBuilder = queryStringClickPackageBuilderI(queryString);
         if (clickPackageBuilder == null) {
             return;
         }
@@ -990,7 +997,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         sdkClickHandler.sendSdkClick(clickPackage);
     }
 
-    private PackageBuilder queryStringClickPackageBuilder(String queryString) {
+    private PackageBuilder queryStringClickPackageBuilderI(String queryString) {
         if (queryString == null) {
             return null;
         }
@@ -1003,7 +1010,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         String[] queryPairs = queryString.split("&");
 
         for (String pair : queryPairs) {
-            readQueryString(pair, queryStringParameters, queryStringAttribution);
+            readQueryStringI(pair, queryStringParameters, queryStringAttribution);
         }
 
         String reftag = queryStringParameters.remove(Constants.REFTAG);
@@ -1017,9 +1024,9 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         return builder;
     }
 
-    private boolean readQueryString(String queryString,
-                                    Map<String, String> extraParameters,
-                                    AdjustAttribution queryStringAttribution) {
+    private boolean readQueryStringI(String queryString,
+                                     Map<String, String> extraParameters,
+                                     AdjustAttribution queryStringAttribution) {
         String[] pairComponents = queryString.split("=");
         if (pairComponents.length != 2) return false;
 
@@ -1032,16 +1039,16 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         String keyWOutPrefix = key.substring(ADJUST_PREFIX.length());
         if (keyWOutPrefix.length() == 0) return false;
 
-        if (!trySetAttribution(queryStringAttribution, keyWOutPrefix, value)) {
+        if (!trySetAttributionI(queryStringAttribution, keyWOutPrefix, value)) {
             extraParameters.put(keyWOutPrefix, value);
         }
 
         return true;
     }
 
-    private boolean trySetAttribution(AdjustAttribution queryStringAttribution,
-                                      String key,
-                                      String value) {
+    private boolean trySetAttributionI(AdjustAttribution queryStringAttribution,
+                                       String key,
+                                       String value) {
         if (key.equals("tracker")) {
             queryStringAttribution.trackerName = value;
             return true;
@@ -1065,14 +1072,14 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         return false;
     }
 
-    private void updateHandlersStatusAndSendInternal() {
+    private void updateHandlersStatusAndSendI() {
         // check if it should stop sending
-        if (!toSend()) {
-            pauseSending();
+        if (!toSendI()) {
+            pauseSendingI();
             return;
         }
 
-        resumeSending();
+        resumeSendingI();
 
         // try to send
         if (!adjustConfig.eventBufferingEnabled) {
@@ -1080,24 +1087,24 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         }
     }
 
-    private void pauseSending() {
+    private void pauseSendingI() {
         attributionHandler.pauseSending();
         packageHandler.pauseSending();
         // the conditions to pause the sdk click handler are less restrictive
         // it's possible for the sdk click handler to be active while others are paused
-        if (!toSend(true)) {
+        if (!toSendI(true)) {
             sdkClickHandler.pauseSending();
         }
     }
 
-    private void resumeSending() {
+    private void resumeSendingI() {
         attributionHandler.resumeSending();
         packageHandler.resumeSending();
         sdkClickHandler.resumeSending();
     }
 
-    private boolean updateActivityState(long now) {
-        if (!checkActivityState(activityState)) { return false; }
+    private boolean updateActivityStateI(long now) {
+        if (!checkActivityStateI(activityState)) { return false; }
 
         long lastInterval = now - activityState.lastActivity;
         // ignore late updates
@@ -1123,47 +1130,47 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         return context.deleteFile(ATTRIBUTION_FILENAME);
     }
 
-    private void transferSessionPackage(long now) {
+    private void transferSessionPackageI(long now) {
         PackageBuilder builder = new PackageBuilder(adjustConfig, deviceInfo, activityState, now);
         ActivityPackage sessionPackage = builder.buildSessionPackage(sessionParameters, internalState.isDelayStart());
         packageHandler.addPackage(sessionPackage);
         packageHandler.sendFirstPackage();
     }
 
-    private void startForegroundTimer() {
+    private void startForegroundTimerI() {
         // don't start the timer if it's disabled or offline
-        if (paused()) {
+        if (pausedI()) {
             return;
         }
 
         foregroundTimer.start();
     }
 
-    private void stopForegroundTimer() {
+    private void stopForegroundTimerI() {
         foregroundTimer.suspend();
     }
 
-    private void foregroundTimerFiredInternal() {
-        if (paused()) {
+    private void foregroundTimerFiredI() {
+        if (pausedI()) {
             // stop the timer cycle if it's disabled/offline
-            stopForegroundTimer();
+            stopForegroundTimerI();
             return;
         }
 
         packageHandler.sendFirstPackage();
 
-        if (updateActivityState(System.currentTimeMillis())) {
-            writeActivityState();
+        if (updateActivityStateI(System.currentTimeMillis())) {
+            writeActivityStateI();
         }
     }
 
-    private void startBackgroundTimer() {
+    private void startBackgroundTimerI() {
         if (backgroundTimer == null) {
             return;
         }
 
         // check if it can send in the background
-        if (!toSend()) {
+        if (!toSendI()) {
             return;
         }
 
@@ -1175,7 +1182,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         backgroundTimer.startIn(BACKGROUND_TIMER_INTERVAL);
     }
 
-    private void stopBackgroundTimer() {
+    private void stopBackgroundTimerI() {
         if (backgroundTimer == null) {
             return;
         }
@@ -1183,18 +1190,18 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         backgroundTimer.cancel();
     }
 
-    private void backgroundTimerFiredInternal() {
+    private void backgroundTimerFiredI() {
         packageHandler.sendFirstPackage();
     }
 
-    private void delayStart() {
+    private void delayStartI() {
         // it's not configured to start delayed or already finished
         if (internalState.isToStartNow()) {
             return;
         }
 
         // the delay has already started
-        if (this.isToUpdatePackages()) {
+        if (isToUpdatePackagesI()) {
             return;
         }
 
@@ -1219,18 +1226,18 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
 
         if (activityState != null) {
             activityState.updatePackages = true;
-            writeActivityState();
+            writeActivityStateI();
         }
     }
 
-    private void sendFirstPackagesInternal() {
+    private void sendFirstPackagesI() {
         if (internalState.isToStartNow()) {
             logger.info("Start delay expired or never configured");
             return;
         }
 
         // update packages in queue
-        updatePackagesInternal();
+        updatePackagesI();
         // no longer is in delay start
         internalState.delayStart = false;
         // cancel possible still running timer if it was called by user
@@ -1238,21 +1245,21 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         // and release timer
         delayStartTimer = null;
         // update the status and try to send first package
-        updateHandlersStatusAndSendInternal();
+        updateHandlersStatusAndSendI();
     }
 
-    private void updatePackagesInternal() {
+    private void updatePackagesI() {
         // update activity packages
         packageHandler.updatePackages(sessionParameters);
         // no longer needs to update packages
         internalState.updatePackages = false;
         if (activityState != null) {
             activityState.updatePackages = false;
-            writeActivityState();
+            writeActivityStateI();
         }
     }
 
-    private boolean isToUpdatePackages() {
+    private boolean isToUpdatePackagesI() {
         if (activityState != null) {
             return activityState.updatePackages;
         } else {
@@ -1260,7 +1267,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         }
     }
 
-    public void addExternalDeviceIdInternal(String externalDeviceId) {
+    public void addExternalDeviceIdI(String externalDeviceId) {
         if (!Util.isValidParameter(externalDeviceId, "value", "External Device Id")) return;
 
         if (sessionParameters.externalDeviceId != null) {
@@ -1269,10 +1276,10 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
 
         sessionParameters.externalDeviceId = externalDeviceId;
 
-        writeSessionParameters();
+        writeSessionParametersI();
     }
 
-    public void addSessionCallbackParameterInternal(String key, String value) {
+    public void addSessionCallbackParameterI(String key, String value) {
         if (!Util.isValidParameter(key, "key", "Session Callback")) return;
         if (!Util.isValidParameter(value, "value", "Session Callback")) return;
 
@@ -1293,10 +1300,10 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
 
         sessionParameters.callbackParameters.put(key, value);
 
-        writeSessionCallbackParameters();
+        writeSessionCallbackParametersI();
     }
 
-    public void addSessionPartnerParameterInternal(String key, String value) {
+    public void addSessionPartnerParameterI(String key, String value) {
         if (!Util.isValidParameter(key, "key", "Session Partner")) return;
         if (!Util.isValidParameter(value, "value", "Session Partner")) return;
 
@@ -1317,10 +1324,10 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
 
         sessionParameters.partnerParameters.put(key, value);
 
-        writeSessionPartnerParameters();
+        writeSessionPartnerParametersI();
     }
 
-    public void removeSessionCallbackParameterInternal(String key) {
+    public void removeSessionCallbackParameterI(String key) {
         if (!Util.isValidParameter(key, "key", "Session Callback")) return;
 
         if (sessionParameters.callbackParameters == null) {
@@ -1337,10 +1344,10 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
 
         logger.debug("Key %@ will be removed", key);
 
-        writeSessionCallbackParameters();
+        writeSessionCallbackParametersI();
     }
 
-    public void removeSessionPartnerParameterInternal(String key) {
+    public void removeSessionPartnerParameterI(String key) {
         if (!Util.isValidParameter(key, "key", "Session Partner")) return;
 
         if (sessionParameters.partnerParameters == null) {
@@ -1357,10 +1364,10 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
 
         logger.debug("Key %@ will be removed", key);
 
-        writeSessionPartnerParameters();
+        writeSessionPartnerParametersI();
     }
 
-    public void resetExternalDeviceIdInternal() {
+    public void resetExternalDeviceIdI() {
         if (sessionParameters.externalDeviceId == null) {
             logger.warn("External Device Id is not set");
             return;
@@ -1368,30 +1375,30 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
 
         sessionParameters.externalDeviceId = null;
 
-        writeSessionParameters();
+        writeSessionParametersI();
     }
 
-    public void resetSessionCallbackParametersInternal() {
+    public void resetSessionCallbackParametersI() {
         if (sessionParameters.callbackParameters == null) {
             logger.warn("Session Callback parameters are not set");
         }
 
         sessionParameters.callbackParameters = null;
 
-        writeSessionCallbackParameters();
+        writeSessionCallbackParametersI();
     }
 
-    public void resetSessionPartnerParametersInternal() {
+    public void resetSessionPartnerParametersI() {
         if (sessionParameters.partnerParameters == null) {
             logger.warn("Session Partner parameters are not set");
         }
 
         sessionParameters.partnerParameters = null;
 
-        writeSessionPartnerParameters();
+        writeSessionPartnerParametersI();
     }
 
-    private void readActivityState(Context context) {
+    private void readActivityStateI(Context context) {
         try {
             activityState = Util.readObject(context, ACTIVITY_STATE_FILENAME, ACTIVITY_STATE_NAME, ActivityState.class);
         } catch (Exception e) {
@@ -1400,7 +1407,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         }
     }
 
-    private void readAttribution(Context context) {
+    private void readAttributionI(Context context) {
         try {
             attribution = Util.readObject(context, ATTRIBUTION_FILENAME, ATTRIBUTION_NAME, AdjustAttribution.class);
         } catch (Exception e) {
@@ -1409,7 +1416,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         }
     }
 
-    private void readSessionParameters(Context context) {
+    private void readSessionParametersI(Context context) {
         try {
             sessionParameters = Util.readObject(context,
                     SESSION_PARAMETERS_FILENAME,
@@ -1421,7 +1428,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         }
     }
 
-    private void readSessionCallbackParameters(Context context) {
+    private void readSessionCallbackParametersI(Context context) {
         try {
             sessionParameters.callbackParameters = Util.readObject(context,
                     SESSION_CALLBACK_PARAMETERS_FILENAME,
@@ -1433,7 +1440,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         }
     }
 
-    private void readSessionPartnerParameters(Context context) {
+    private void readSessionPartnerParametersI(Context context) {
         try {
             sessionParameters.partnerParameters = Util.readObject(context,
                     SESSION_PARTNER_PARAMETERS_FILENAME,
@@ -1445,27 +1452,34 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         }
     }
 
-    private synchronized void writeActivityState() {
+    private void writeActivityStateI() {
+        writeActivityStateS(null);
+    }
+
+    private synchronized void writeActivityStateS(Runnable changeActivityState) {
+        if (changeActivityState != null) {
+            changeActivityState.run();
+        }
         Util.writeObject(activityState, adjustConfig.context, ACTIVITY_STATE_FILENAME, ACTIVITY_STATE_NAME);
     }
 
-    private void writeAttribution() {
+    private void writeAttributionI() {
         Util.writeObject(attribution, adjustConfig.context, ATTRIBUTION_FILENAME, ATTRIBUTION_NAME);
     }
 
-    private void writeSessionParameters() {
+    private void writeSessionParametersI() {
         Util.writeObject(sessionParameters, adjustConfig.context, SESSION_PARAMETERS_FILENAME, SESSION_PARAMETERS_NAME);
     }
 
-    private void writeSessionCallbackParameters() {
+    private void writeSessionCallbackParametersI() {
         Util.writeObject(sessionParameters.callbackParameters, adjustConfig.context, SESSION_CALLBACK_PARAMETERS_FILENAME, SESSION_CALLBACK_PARAMETERS_NAME);
     }
 
-    private void writeSessionPartnerParameters() {
+    private void writeSessionPartnerParametersI() {
         Util.writeObject(sessionParameters.partnerParameters, adjustConfig.context, SESSION_PARTNER_PARAMETERS_FILENAME, SESSION_PARTNER_PARAMETERS_NAME);
     }
 
-    private boolean checkEvent(AdjustEvent event) {
+    private boolean checkEventI(AdjustEvent event) {
         if (event == null) {
             logger.error("Event missing");
             return false;
@@ -1479,7 +1493,7 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         return true;
     }
 
-    private boolean checkActivityState(ActivityState activityState) {
+    private boolean checkActivityStateI(ActivityState activityState) {
         if (activityState == null) {
             logger.error("Missing activity state");
             return false;
@@ -1487,11 +1501,11 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
         return true;
     }
 
-    private boolean paused() {
-        return paused(false);
+    private boolean pausedI() {
+        return pausedI(false);
     }
 
-    private boolean paused(boolean sdkClickHandlerOnly) {
+    private boolean pausedI(boolean sdkClickHandlerOnly) {
         if (sdkClickHandlerOnly) {
             // sdk click handler is paused if either:
             return internalState.isOffline() ||     // it's offline
@@ -1503,13 +1517,13 @@ public class ActivityHandler extends HandlerThread implements IActivityHandler {
                 internalState.isDelayStart();       // is in delayed start
     }
 
-    private boolean toSend() {
-        return toSend(false);
+    private boolean toSendI() {
+        return toSendI(false);
     }
 
-    private boolean toSend(boolean sdkClickHandlerOnly) {
+    private boolean toSendI(boolean sdkClickHandlerOnly) {
         // don't send when it's paused
-        if (paused(sdkClickHandlerOnly)) {
+        if (pausedI(sdkClickHandlerOnly)) {
             return false;
         }
 
